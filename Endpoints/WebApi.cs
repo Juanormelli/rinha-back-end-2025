@@ -16,12 +16,10 @@ public static class WebApi {
     app.MapGet("/payments-summary", async ([FromQuery] string from, [FromQuery] string to, [FromServices] Processor processor) => {
       var abc = await processor.GetPaymentSummary(from, to);
       return Results.Ok(abc);
-
-
-
     });
-    app.MapGet("/sync", ([FromServices] ConcurrentDictionary<Guid, PaymentModel> abc) => {
-      return Results.Ok(abc);
+    app.MapGet("/sync", ([FromQuery] string from, [FromServices] ConcurrentDictionary<Guid, PaymentModel> abc) => {
+      var abcFiltred = abc.Where(x => x.Value.RequestedAt >= DateTime.Parse(from).ToUniversalTime()).ToDictionary();
+      return Results.Ok(abcFiltred);
     });
     // Add more endpoints as needed
   }
