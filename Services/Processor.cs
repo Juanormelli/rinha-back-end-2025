@@ -93,7 +93,7 @@ public class Processor {
 
     await Policy
             .HandleResult<bool>(c => c == false)
-            .WaitAndRetryForeverAsync(i => TimeSpan.FromMilliseconds(1))
+            .WaitAndRetryForeverAsync(i => TimeSpan.Zero)
             .ExecuteAsync(async () => {
               try {
                 var abc = await clientSync.GetFromJsonAsync<Dictionary<Guid, PaymentModel>>($"/sync?from={DateTime.UtcNow.AddMilliseconds(-500).ToString("o")}");
