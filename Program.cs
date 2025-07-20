@@ -7,11 +7,11 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddControllers();
 
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+
+builder.Logging.ClearProviders();
 
 var services = builder.Services;
 
@@ -22,26 +22,20 @@ services.AddSingleton<Processor>();
 services.AddSingleton<ConcurrentDictionary<Guid, PaymentModel>>();
 
 services.AddHttpClient("default", c => {
-  c.BaseAddress = new System.Uri("http://localhost:8001");
+  c.BaseAddress = new System.Uri("http://payment-processor-default:8080");
 });
 
 services.AddHttpClient("fallback", c => {
-  c.BaseAddress = new System.Uri("http://localhost:8002");
+  c.BaseAddress = new System.Uri("http://payment-processor-fallback:8080");
 });
 
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment()) {
-  app.MapOpenApi();
-}
-
 app.RegisterEndpoints();
 
 app.UseHttpsRedirection();
 
-app.UseAuthorization();
 
-app.MapControllers();
 
 app.Run();

@@ -21,6 +21,7 @@ RUN dotnet build "./rinha-back-end-2025.csproj" -c $BUILD_CONFIGURATION -o /app/
 # Esta fase é usada para publicar o projeto de serviço a ser copiado para a fase final
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
+RUN rm -rf /src/appsettings.json
 RUN dotnet publish "./rinha-back-end-2025.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 # Esta fase é usada na produção ou quando executada no VS no modo normal (padrão quando não está usando a configuração de Depuração)

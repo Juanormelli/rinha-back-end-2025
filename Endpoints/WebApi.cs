@@ -9,14 +9,11 @@ public static class WebApi {
   public static void RegisterEndpoints (this WebApplication app) {
     app.MapPost("/payments", async ([FromBody] PaymentModel model, [FromServices] Processor processor) => {
 
-      await processor.ProcessPayment(model);
+      processor.ProcessPayment(model);
       Results.Ok();
 
     });
     app.MapGet("/payments-summary", async ([FromQuery] string from, [FromQuery] string to, [FromServices] Processor processor) => {
-      var fromDate = DateTime.Parse(from);
-      var toDate = DateTime.Parse(to);
-
       var abc = await processor.GetPaymentSummary(from, to);
       return Results.Ok(abc);
 
