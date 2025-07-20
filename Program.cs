@@ -3,7 +3,7 @@ using rinha_back_end_2025.Model;
 using rinha_back_end_2025.Services;
 using System.Collections.Concurrent;
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateSlimBuilder(args);
 
 // Add services to the container.
 builder.Services.ConfigureHttpJsonOptions(options => {
@@ -17,7 +17,6 @@ builder.Logging.ClearProviders();
 
 var services = builder.Services;
 
-services.AddSingleton<ConcurrentQueue<PaymentModel>>();
 services.AddSingleton<Processor>();
 services.AddSingleton<ConcurrentDictionary<Guid, PaymentModel>>();
 
@@ -29,7 +28,7 @@ services.AddHttpClient("default", c => {
   {
     PooledConnectionLifetime = TimeSpan.FromMinutes(15),
     PooledConnectionIdleTimeout = TimeSpan.FromMinutes(5),
-    MaxConnectionsPerServer = 500,
+    MaxConnectionsPerServer = 50000,
     UseCookies = false,
     AllowAutoRedirect = true
 
@@ -43,7 +42,7 @@ services.AddHttpClient("fallback", c => {
   {
     PooledConnectionLifetime = TimeSpan.FromMinutes(15),
     PooledConnectionIdleTimeout = TimeSpan.FromMinutes(5),
-    MaxConnectionsPerServer = 500,
+    MaxConnectionsPerServer = 50000,
     UseCookies = false,
     AllowAutoRedirect = true
   });
@@ -54,8 +53,6 @@ var app = builder.Build();
 app.RegisterEndpoints();
 
 app.UseHttpsRedirection();
-
-
 
 app.Run();
 
