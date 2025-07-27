@@ -24,7 +24,7 @@ public class Processor {
     _clientFactory = clientFactory;
     repository1 = repository;
     PaymentQueue.Buffer(TimeSpan.FromMilliseconds(100)).Subscribe(async x => SendRequestToPaymentProcessor(x));
-    PaymentSync.Buffer(TimeSpan.FromMilliseconds(500)).Subscribe(async x => SyncPayments(x));
+    PaymentSync.Buffer(TimeSpan.FromMilliseconds(100)).Subscribe(async x => SyncPayments(x));
   }
 
   async private Task SendRequestToPaymentProcessor (IList<PaymentModel> payments) {
@@ -67,8 +67,8 @@ public class Processor {
 
 
     }
-    var httpClient = new HttpClient() { BaseAddress = new Uri(Environment.GetEnvironmentVariable("workerSync")) };
-    httpClient.PostAsJsonAsync("/sync", repository1._paymentSummary.Values.ToList(), options);
+    //var httpClient = new HttpClient() { BaseAddress = new Uri(Environment.GetEnvironmentVariable("workerSync")) };
+    //httpClient.PostAsJsonAsync("/sync", , options);
   }
   async Task SyncPayments (IList<PaymentModel> payments) {
     foreach (var payment in payments) {

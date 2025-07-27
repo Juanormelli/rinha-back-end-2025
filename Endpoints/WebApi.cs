@@ -26,6 +26,14 @@ public static class WebApi {
       var summaryDefault = new PaymentSummaryModel();
       var summaryFallback = new PaymentSummaryModel();
 
+      var httpClient = new HttpClient() { BaseAddress = new Uri(Environment.GetEnvironmentVariable("workerSync")) };
+      var abc = await httpClient.GetFromJsonAsync<List<PaymentModel>>($"/sync?from={from}&to={to}", options);
+
+      foreach (var payment in abc) {
+        processor.paymentSync.OnNext(payment);
+        summaryDefault.AddRequest(payment);
+      }
+
       foreach (var payment in processor.repository1._paymentSummary.Values) {
         var requestedAt = payment.RequestedAt;
         if (requestedAt >= fromDate && requestedAt <= toDate) {
@@ -46,15 +54,22 @@ public static class WebApi {
       writer.WriteEndObject();
       writer.Flush();
 
-      return Results.File(stream.ToArray(), "application/json");
+      Results.File(stream.ToArray(), "application/json");
+
     });
 
-    app.MapPost("/sync", ([FromBody] List<PaymentModel> model, [FromServices] Processor processor) => {
-      Results.Ok();
-      foreach (var payment in model) {
-        processor.paymentSync.OnNext(payment);
+    app.MapGet("/sync", async ([FromQuery] string? from, [FromQuery] string? to, [FromServices] Processor processor) => {
+      DateTime fromDate = DateTime.Parse(from, null, System.Globalization.DateTimeStyles.AdjustToUniversal);
+      DateTime toDate = DateTime.Parse(to, null, System.Globalization.DateTimeStyles.AdjustToUniversal);
+      var newList = new List<PaymentModel>();
+      foreach (var payment in processor.repository1._paymentSummary.Values) {
+        var requestedAt = payment.RequestedAt;
+        if (requestedAt >= fromDate && requestedAt <= toDate) {
+          newList.Add(payment);
+        }
       }
 
+      return Results.Ok(newList);
     });
   }
 }
