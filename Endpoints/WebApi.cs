@@ -32,7 +32,6 @@ public static class WebApi {
           summaryDefault.AddRequest(payment);
         }
       }
-
       using var stream = new MemoryStream();
       using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = false });
 
@@ -53,7 +52,7 @@ public static class WebApi {
     app.MapPost("/sync", ([FromBody] List<PaymentModel> model, [FromServices] Processor processor) => {
       Results.Ok();
       foreach (var payment in model) {
-        processor.repository1._paymentSummary.TryAdd(payment.CorrelationId, payment);
+        processor.paymentSync.OnNext(payment);
       }
 
     });
