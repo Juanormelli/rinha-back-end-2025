@@ -32,6 +32,7 @@ public static class WebApi {
           summaryDefault.AddRequest(payment);
         }
       }
+
       using var stream = new MemoryStream();
       using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = false });
 

@@ -8,6 +8,7 @@ namespace rinha_back_end_2025.SourceGeneration;
 [JsonSerializable(typeof(Repository))]
 
 [JsonSerializable(typeof(PaymentModel[]))]
+[JsonSerializable(typeof(List<PaymentModel>))]
 [JsonSerializable(typeof(HCResponse))]
 [JsonSerializable(typeof(Guid))]
 [JsonSerializable(typeof(decimal))]
