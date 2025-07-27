@@ -57,35 +57,9 @@ public static class WebApi {
       return Results.File(stream.ToArray(), "application/json");
     });
 
-    app.MapGet("/sync", async ([FromQuery] string? from, [FromQuery] string? to, [FromServices] Repository repository) => {
-      DateTime fromDate = DateTime.Parse(from, null, System.Globalization.DateTimeStyles.AdjustToUniversal);
-      DateTime toDate = DateTime.Parse(to, null, System.Globalization.DateTimeStyles.AdjustToUniversal);
-
-      var summaryDefault = new PaymentSummaryModel();
-      var summaryFallback = new PaymentSummaryModel();
-
-      foreach (var payment in repository._paymentSummary.Values) {
-        var requestedAt = payment.RequestedAt;
-        if (requestedAt >= fromDate && requestedAt <= toDate) {
-          summaryDefault.AddRequest(payment);
-        }
-      }
-
-      using var stream = new MemoryStream();
-      using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = false });
-
-      writer.WriteStartObject();
-
-      writer.WritePropertyName("default");
-      summaryDefault.WriteTo(writer);
-
-      writer.WritePropertyName("fallback");
-      summaryFallback.WriteTo(writer);
-
-      writer.WriteEndObject();
-      writer.Flush();
-
-      return Results.File(stream.ToArray(), "application/json");
+    app.MapPost("/sync", ([FromBody] PaymentModel model, [FromServices] Processor processor) => {
+      Results.Ok();
+      processor.paymentSync.OnNext(model);
     });
   }
 }
