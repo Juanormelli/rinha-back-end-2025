@@ -69,7 +69,7 @@ public static class WebApi {
         }
       }
 
-      return Results.Ok(newList);
+      return Results.Json(newList, options);
     });
   }
 }
