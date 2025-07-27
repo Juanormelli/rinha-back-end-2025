@@ -24,10 +24,11 @@ public class Processor {
     _clientFactory = clientFactory;
     repository1 = repository;
     PaymentQueue.Buffer(TimeSpan.FromMilliseconds(100)).Subscribe(async x => SendRequestToPaymentProcessor(x));
-    PaymentSync.Buffer(TimeSpan.FromMilliseconds(500)).Subscribe(async x => SyncPayments(x));
+    PaymentSync.Buffer(TimeSpan.FromMilliseconds(2000)).Subscribe(async x => SyncPayments(x));
   }
 
   async private Task SendRequestToPaymentProcessor (IList<PaymentModel> payments) {
+    var newList = new List<PaymentModel>();
     var policy = Policy
       .HandleResult<bool>(c => {
         if (c == false) {
@@ -59,15 +60,17 @@ public class Processor {
         if (!response.IsSuccessStatusCode) {
           return false;
         }
-        var httpClient = new HttpClient() { BaseAddress = new Uri(Environment.GetEnvironmentVariable("workerSync")) };
-        httpClient.PostAsJsonAsync("/sync", payment, options);
+        newList.Add(payment);
         repository1._paymentSummary.TryAdd(payment.CorrelationId, payment);
         return true;
       });
 
+      var httpClient = new HttpClient() { BaseAddress = new Uri(Environment.GetEnvironmentVariable("workerSync")) };
+      httpClient.PostAsJsonAsync("/sync", newList, options);
+      newList.Clear();
     }
   }
-  async void SyncPayments (IList<PaymentModel> payments) {
+  async Task SyncPayments (IList<PaymentModel> payments) {
     foreach (var payment in payments) {
       repository1._paymentSummary.TryAdd(payment.CorrelationId, payment);
     }

@@ -49,9 +49,12 @@ public static class WebApi {
       return Results.File(stream.ToArray(), "application/json");
     });
 
-    app.MapPost("/sync", ([FromBody] PaymentModel model, [FromServices] Processor processor) => {
+    app.MapPost("/sync", ([FromBody] List<PaymentModel> model, [FromServices] Processor processor) => {
       Results.Ok();
-      processor.paymentSync.OnNext(model);
+      foreach (var payment in model) {
+        processor.paymentSync.OnNext(payment);
+      }
+
     });
   }
 }
