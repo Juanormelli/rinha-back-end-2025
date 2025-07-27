@@ -1,58 +1,64 @@
+using rinha_back_end_2025;
 using rinha_back_end_2025.Endpoints;
-using rinha_back_end_2025.Model;
 using rinha_back_end_2025.Services;
-using System.Collections.Concurrent;
+using System.Runtime;
 
 var builder = WebApplication.CreateSlimBuilder(args);
 
-// Add services to the container.
+// Configurações de serialização otimizadas
 builder.Services.ConfigureHttpJsonOptions(options => {
   options.SerializerOptions.TypeInfoResolver = rinha_back_end_2025.SourceGeneration.PaymentsSerializerContext.Default;
   options.SerializerOptions.IncludeFields = false;
+  options.SerializerOptions.DefaultBufferSize = 256; // Buffer menor para respostas pequenas
 });
 
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-
+// Configurações Kestrel para alta performance
+builder.WebHost.ConfigureKestrel(serverOptions => {
+  serverOptions.AddServerHeader = false;
+  serverOptions.Limits.MaxConcurrentConnections = 100_000;
+  serverOptions.Limits.MaxConcurrentUpgradedConnections = 100_000;
+  serverOptions.Limits.KeepAliveTimeout = TimeSpan.FromSeconds(30);
+  serverOptions.Limits.RequestHeadersTimeout = TimeSpan.FromSeconds(10);
+});
 builder.Logging.ClearProviders();
 
+GCSettings.LatencyMode = GCLatencyMode.LowLatency;
 var services = builder.Services;
 
 services.AddSingleton<Processor>();
-services.AddSingleton<ConcurrentDictionary<Guid, PaymentModel>>();
+services.AddSingleton<Repository>();
 
+// HttpClient otimizado
 services.AddHttpClient("default", c => {
   c.BaseAddress = new System.Uri("http://payment-processor-default:8080");
 
 })
-  .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler()
-  {
-    PooledConnectionLifetime = TimeSpan.FromMinutes(15),
-    PooledConnectionIdleTimeout = TimeSpan.FromMinutes(5),
-    MaxConnectionsPerServer = 50000,
-    UseCookies = false,
-    AllowAutoRedirect = true
-
-  });
-
+.ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+{
+  PooledConnectionLifetime = TimeSpan.FromMinutes(15),
+  PooledConnectionIdleTimeout = TimeSpan.FromMinutes(5),
+  MaxConnectionsPerServer = 10_000,
+  EnableMultipleHttp2Connections = true,
+  UseCookies = false
+});
 
 services.AddHttpClient("fallback", c => {
   c.BaseAddress = new System.Uri("http://payment-processor-fallback:8080");
+  c.Timeout = TimeSpan.FromMilliseconds(500);
 })
-  .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler()
-  {
-    PooledConnectionLifetime = TimeSpan.FromMinutes(15),
-    PooledConnectionIdleTimeout = TimeSpan.FromMinutes(5),
-    MaxConnectionsPerServer = 50000,
-    UseCookies = false,
-    AllowAutoRedirect = true
-  });
+.ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+{
+  PooledConnectionLifetime = TimeSpan.FromMinutes(15),
+  PooledConnectionIdleTimeout = TimeSpan.FromMinutes(5),
+  MaxConnectionsPerServer = 50000,
+  EnableMultipleHttp2Connections = true,
+  UseCookies = false
+});
 
+// Minimiza middlewares para latência mínima
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+app.UseRouting(); // Apenas roteamento, sem middlewares extras
+
 app.RegisterEndpoints();
-
-app.UseHttpsRedirection();
-
 app.Run();
-

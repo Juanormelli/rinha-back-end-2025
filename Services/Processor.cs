@@ -1,110 +1,133 @@
 ﻿using Polly;
 using rinha_back_end_2025.Model;
-using System.Collections.Concurrent;
+using rinha_back_end_2025.SourceGeneration;
+using System.Reactive.Linq;
+using System.Reactive.Subjects;
+using System.Text.Json;
 
 namespace rinha_back_end_2025.Services;
 
 public class Processor {
+  public Subject<PaymentModel> paymentQueue = new Subject<PaymentModel>();
   private readonly IHttpClientFactory _clientFactory;
-  private ConcurrentDictionary<Guid, PaymentModel> _paymentSummary { get; set; } = new ConcurrentDictionary<Guid, PaymentModel>(200, 20000);
+  public Repository repository1;
   public int timeoutDef { get; private set; }
   public int timeoutFall { get; private set; }
-
+  public IObservable<PaymentModel> PaymentQueue => paymentQueue.AsObservable();
   private static HttpClient clientSync = new HttpClient() { BaseAddress = new Uri(Environment.GetEnvironmentVariable("workerSync")) };
+  //private static HttpClient clientSync = new HttpClient() { BaseAddress = new Uri("http://localhost:9999") };
   private bool isDefaultinFail;
   private bool isFallbackinFail;
+  public System.Timers.Timer timer;
+  public bool started;
+  public JsonSerializerOptions options;
 
-
-  public Processor (ConcurrentDictionary<Guid, PaymentModel> paymentSummary, IHttpClientFactory clientFactory) {
-
-    _paymentSummary = paymentSummary;
+  public Processor (Repository repository, IHttpClientFactory clientFactory) {
+    options = new JsonSerializerOptions()
+    {
+      TypeInfoResolver = PaymentsSerializerContext.Default
+    };
     _clientFactory = clientFactory;
-    this.SyncPaymentSummary();
-    this.UpdateTimeouBasedOnmPayments();
+    repository1 = repository;
+    PaymentQueue.Buffer(TimeSpan.FromMilliseconds(100)).Subscribe(async x => SendRequestToPaymentProcessor(x));
+
   }
 
-  async public Task<bool> ProcessPayment (PaymentModel payment) {
-    await this.SendRequestToPaymentProcessor(payment);
-    return true;
+  async private Task SendRequestToPaymentProcessor (IList<PaymentModel> payments) {
+    foreach (var payment in payments) {
+      await Policy
+           .HandleResult<bool>(c => {
+             if (c == false) {
+               //payment.ChangePaymentProcessor();
+               return true;
+             }
+             return false;
+           }
+           )
+           .Or<TimeoutException>(c => {
+             if (c is TimeoutException) {
+               //payment.ChangePaymentProcessor();
+               return true;
+             }
+             return false;
+           })
+           .Or<TaskCanceledException>(c => {
+             if (c is TaskCanceledException) {
+               //payment.ChangePaymentProcessor();
+               return true;
+             }
+             return false;
+           })
+           .WaitAndRetryAsync(1000, (i) => TimeSpan.FromMilliseconds(1))
+           .ExecuteAsync(async () => {
+             var client = _clientFactory.CreateClient(payment.CurrentPaymentToProccess);
+             payment.RequestedAt = DateTime.UtcNow;
+             var response = await client.PostAsJsonAsync("/payments", payment, options);
+             if (!response.IsSuccessStatusCode) {
+               return false;
+             }
+             repository1._paymentSummary.TryAdd(payment.CorrelationId, payment);
+             return true;
+           });
+
+    }
   }
 
-  async private Task<bool> SendRequestToPaymentProcessor (PaymentModel payment) {
+  //async public ValueTask<Dictionary<string, PaymentSummaryModel>> GetPaymentSummary (string from, string to) {
+  //  DateTime fromDate = DateTime.Parse(from, null, System.Globalization.DateTimeStyles.AdjustToUniversal);
+  //  DateTime toDate = DateTime.Parse(to, null, System.Globalization.DateTimeStyles.AdjustToUniversal);
+
+  //  var summaryDefault = new PaymentSummaryModel();
+  //  var summaryFallback = new PaymentSummaryModel();
+
+  //  foreach (var payment in repository1._paymentSummary.Values) {
+  //    var requestedAt = payment.RequestedAt;
+  //    if (requestedAt > fromDate.AddMilliseconds(-5) && requestedAt <= toDate) {
+  //      summaryDefault.AddRequest(payment);
+  //    }
+  //  }
+
+  //  using var stream = new MemoryStream();
+  //  using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = false });
+
+  //  writer.WriteStartObject();
+
+  //  writer.WritePropertyName("default");
+  //  summaryDefault.WriteTo(writer);
+
+  //  writer.WritePropertyName("fallback");
+  //  summaryFallback.WriteTo(writer);
+
+  //  writer.WriteEndObject();
+  //  writer.Flush();
+
+  //  return new FileContentResult(stream.ToArray(), "application/json");
+  //}
+
+  public async void SyncPaymentAfterSeconds () {
+    var lastExecdateTime = DateTime.UtcNow;
     await Policy
           .HandleResult<bool>(c => {
             if (c == false) {
-              payment.ChangePaymentProcessor();
-              return true;
-            }
-            return false;
-          }
-          )
-          .Or<TimeoutException>(c => {
-            if (c is TimeoutException) {
-              payment.ChangePaymentProcessor();
+              lastExecdateTime = DateTime.UtcNow;
               return true;
             }
             return false;
           })
-          .Or<TaskCanceledException>(c => {
-            if (c is TaskCanceledException) {
-              payment.ChangePaymentProcessor();
-              return true;
-            }
-            return false;
-          })
-          .WaitAndRetryAsync(2, (i) => TimeSpan.FromMilliseconds(1))
+          .WaitAndRetryForeverAsync(i => TimeSpan.FromMilliseconds(500))
           .ExecuteAsync(async () => {
-            if (timeoutDef > 1500 && payment.CurrentPaymentToProccess == "default")
-              return false;
-            if (isDefaultinFail && isFallbackinFail)
-              return false;
 
-            var client = _clientFactory.CreateClient(payment.CurrentPaymentToProccess);
-            var response = await client.PostAsJsonAsync("/payments", payment);
-            if (!response.IsSuccessStatusCode) {
-              return false;
-            }
-            _paymentSummary.TryAdd(payment.CorrelationId, payment);
-            return true;
+            //var syncExec = _paymentSummary.Where(x => x.Value.RequestedAt >= lastExecdateTime.AddSeconds(-15)).ToDictionary();
+            await clientSync.PostAsJsonAsync("/sync", repository1._paymentSummary, options);
+            return false;
+
           });
-    return true;
   }
 
-  async public ValueTask<Dictionary<string, PaymentSummaryModel>> GetPaymentSummary (string from, string to) {
-    DateTime fromDate = DateTime.Parse(from).ToUniversalTime();
-    DateTime toDate = DateTime.Parse(to).ToUniversalTime();
 
-    var summaryPayment = new Dictionary<string, PaymentSummaryModel>() {
-      { "default", new PaymentSummaryModel() },
-      { "fallback", new PaymentSummaryModel() }
+  async public Task SyncPaymentSummary (Dictionary<Guid, PaymentModel> values) {
 
-    };
-
-    var summary = _paymentSummary.Values.Where(x => x.RequestedAt >= fromDate && x.RequestedAt <= toDate);
-
-    foreach (var x in summary) {
-      summaryPayment[x.CurrentPaymentToProccess].AddRequest(x);
-    }
-    return summaryPayment;
-  }
-
-  async public void SyncPaymentSummary () {
-
-
-    await Policy
-            .HandleResult<bool>(c => c == false)
-            .WaitAndRetryForeverAsync(i => TimeSpan.Zero)
-            .ExecuteAsync(async () => {
-              try {
-                var abc = await clientSync.GetFromJsonAsync<Dictionary<Guid, PaymentModel>>($"/sync?from={DateTime.UtcNow.AddMilliseconds(-500).ToString("o")}");
-                foreach (var value in abc) {
-                  _paymentSummary.TryAdd(value.Key, value.Value);
-                }
-                return false;
-              } catch (HttpRequestException) {
-                return false;
-              }
-            });
+    clientSync.PostAsJsonAsync($"/sync", values);
   }
 
   async public void UpdateTimeouBasedOnmPayments () {
@@ -123,6 +146,7 @@ public class Processor {
           return false;
 
         }
+
         );
   }
 }
