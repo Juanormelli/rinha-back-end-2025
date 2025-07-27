@@ -26,20 +26,12 @@ public static class WebApi {
       var summaryDefault = new PaymentSummaryModel();
       var summaryFallback = new PaymentSummaryModel();
 
-      var clientSync = new HttpClient() { BaseAddress = new Uri(Environment.GetEnvironmentVariable("workerSync")) };
-
-      var response = await clientSync.GetFromJsonAsync<PaymentSummaryModel>($"/sync?from={from}&to={to}", options);
-
       foreach (var payment in processor.repository1._paymentSummary.Values) {
         var requestedAt = payment.RequestedAt;
         if (requestedAt >= fromDate && requestedAt <= toDate) {
           summaryDefault.AddRequest(payment);
         }
       }
-
-      summaryDefault.TotalRequests += response.TotalRequests;
-      summaryDefault.TotalAmount += response.TotalAmount;
-
       using var stream = new MemoryStream();
       using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = false });
 
