@@ -53,7 +53,7 @@ public static class WebApi {
     app.MapPost("/sync", ([FromBody] List<PaymentModel> model, [FromServices] Processor processor) => {
       Results.Ok();
       foreach (var payment in model) {
-        processor.paymentSync.OnNext(payment);
+        processor.repository1._paymentSummary.TryAdd(payment.CorrelationId, payment);
       }
 
     });
