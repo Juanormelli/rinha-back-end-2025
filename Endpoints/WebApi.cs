@@ -31,7 +31,8 @@ public static class WebApi {
 
       foreach (var payment in abc) {
         processor.paymentSync.OnNext(payment);
-        summaryDefault.AddRequest(payment);
+        if (!processor.repository1._paymentSummary.TryGetValue(payment.CorrelationId, out _))
+          summaryDefault.AddRequest(payment);
       }
 
       foreach (var payment in processor.repository1._paymentSummary.Values) {
