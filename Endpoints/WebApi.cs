@@ -20,8 +20,8 @@ public static class WebApi {
     });
 
     app.MapGet("/payments-summary", async ([FromQuery] string? from, [FromQuery] string? to, [FromServices] Processor processor) => {
-      DateTime fromDate = DateTime.Parse(from, null, System.Globalization.DateTimeStyles.AdjustToUniversal);
-      DateTime toDate = DateTime.Parse(to, null, System.Globalization.DateTimeStyles.AdjustToUniversal);
+      DateTime? fromDate = string.IsNullOrEmpty(from) ? DateTime.MinValue : DateTime.Parse(from, null, System.Globalization.DateTimeStyles.AdjustToUniversal);
+      DateTime? toDate = string.IsNullOrEmpty(to) ? DateTime.MaxValue : DateTime.Parse(to, null, System.Globalization.DateTimeStyles.AdjustToUniversal);
 
       var summaryDefault = new PaymentSummaryModel();
       var summaryFallback = new PaymentSummaryModel();
@@ -59,8 +59,8 @@ public static class WebApi {
     });
 
     app.MapGet("/sync", async ([FromQuery] string? from, [FromQuery] string? to, [FromServices] Processor processor) => {
-      DateTime fromDate = DateTime.Parse(from, null, System.Globalization.DateTimeStyles.AdjustToUniversal);
-      DateTime toDate = DateTime.Parse(to, null, System.Globalization.DateTimeStyles.AdjustToUniversal);
+      DateTime fromDate = string.IsNullOrEmpty(from) ? DateTime.MinValue : DateTime.Parse(from, null, System.Globalization.DateTimeStyles.AdjustToUniversal);
+      DateTime toDate = string.IsNullOrEmpty(to) ? DateTime.MaxValue : DateTime.Parse(to, null, System.Globalization.DateTimeStyles.AdjustToUniversal);
       var newList = new List<PaymentModel>();
       foreach (var payment in processor.repository1._paymentSummary.Values) {
         var requestedAt = payment.RequestedAt;
