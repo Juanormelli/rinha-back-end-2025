@@ -30,7 +30,6 @@ public static class WebApi {
       var abc = await httpClient.GetFromJsonAsync<List<PaymentModel>>($"/sync?from={from}&to={to}", options);
 
       foreach (var payment in abc) {
-        processor.paymentSync.OnNext(payment);
         summaryDefault.AddRequest(payment);
       }
 
@@ -54,7 +53,7 @@ public static class WebApi {
       writer.WriteEndObject();
       writer.Flush();
 
-      Results.File(stream.ToArray(), "application/json");
+      return Results.File(stream.ToArray(), "application/json");
 
     });
 
