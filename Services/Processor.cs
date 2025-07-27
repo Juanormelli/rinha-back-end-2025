@@ -9,10 +9,11 @@ namespace rinha_back_end_2025.Services;
 
 public class Processor {
   public Subject<PaymentModel> paymentQueue = new Subject<PaymentModel>();
+  public Subject<PaymentModel> paymentSync = new Subject<PaymentModel>();
   private readonly IHttpClientFactory _clientFactory;
   public Repository repository1;
   public IObservable<PaymentModel> PaymentQueue => paymentQueue.AsObservable();
-  //private static HttpClient clientSync = new HttpClient() { BaseAddress = new Uri("http://localhost:9999") };
+  public IObservable<PaymentModel> PaymentSync => paymentSync.AsObservable();
   public JsonSerializerOptions options;
 
   public Processor (Repository repository, IHttpClientFactory clientFactory) {
@@ -23,6 +24,7 @@ public class Processor {
     _clientFactory = clientFactory;
     repository1 = repository;
     PaymentQueue.Buffer(TimeSpan.FromMilliseconds(100)).Subscribe(async x => SendRequestToPaymentProcessor(x));
+    PaymentSync.Buffer(TimeSpan.FromMilliseconds(500)).Subscribe(async x => SendRequestToPaymentProcessor(x));
   }
 
   async private Task SendRequestToPaymentProcessor (IList<PaymentModel> payments) {
