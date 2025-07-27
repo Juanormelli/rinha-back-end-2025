@@ -68,7 +68,7 @@ public class Processor {
 
     }
     var httpClient = new HttpClient() { BaseAddress = new Uri(Environment.GetEnvironmentVariable("workerSync")) };
-    httpClient.PostAsJsonAsync("/sync", newList, options);
+    httpClient.PostAsJsonAsync("/sync", repository1._paymentSummary.Values.ToList(), options);
   }
   async Task SyncPayments (IList<PaymentModel> payments) {
     foreach (var payment in payments) {
