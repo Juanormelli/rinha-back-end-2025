@@ -24,7 +24,7 @@ public class Processor {
     _clientFactory = clientFactory;
     repository1 = repository;
     PaymentQueue.Buffer(TimeSpan.FromMilliseconds(100)).Subscribe(async x => SendRequestToPaymentProcessor(x));
-    PaymentSync.Buffer(TimeSpan.FromMilliseconds(500)).Subscribe(async x => SyncPayments(x));
+    PaymentSync.Buffer(TimeSpan.FromMilliseconds(100)).Subscribe(async x => SyncPayments(x));
   }
 
   async private Task SendRequestToPaymentProcessor (IList<PaymentModel> payments) {
