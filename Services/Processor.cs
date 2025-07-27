@@ -65,10 +65,11 @@ public class Processor {
         return true;
       });
 
-      var httpClient = new HttpClient() { BaseAddress = new Uri(Environment.GetEnvironmentVariable("workerSync")) };
-      httpClient.PostAsJsonAsync("/sync", newList, options);
-      newList.Clear();
+
     }
+    var httpClient = new HttpClient() { BaseAddress = new Uri(Environment.GetEnvironmentVariable("workerSync")) };
+    httpClient.PostAsJsonAsync("/sync", newList, options);
+    newList.Clear();
   }
   async Task SyncPayments (IList<PaymentModel> payments) {
     foreach (var payment in payments) {
