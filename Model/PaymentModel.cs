@@ -3,7 +3,7 @@
 public class PaymentModel {
   public Guid CorrelationId { get; set; }
   public decimal Amount { get; set; }
-  public DateTime RequestedAt { get; set; } = DateTime.UtcNow; // ISO 8601 format
+  public DateTime RequestedAt { get; set; }  // ISO 8601 format
   public string CurrentPaymentToProccess { get; set; } = "default";
 
   public PaymentModel () {
