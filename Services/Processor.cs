@@ -49,7 +49,7 @@ public class Processor {
         }
         return false;
       })
-      .WaitAndRetryAsync(1000, (i) => TimeSpan.FromMilliseconds(1));
+      .WaitAndRetryAsync(1000, (i) => TimeSpan.FromMilliseconds(5000));
 
     foreach (var payment in payments) {
 
