@@ -21,6 +21,7 @@ builder.WebHost.ConfigureKestrel(serverOptions => {
   serverOptions.Limits.RequestHeadersTimeout = TimeSpan.FromSeconds(10);
 });
 builder.Logging.ClearProviders();
+ThreadPool.SetMinThreads(workerThreads: 1500, completionPortThreads: 512);
 
 GCSettings.LatencyMode = GCLatencyMode.LowLatency;
 var services = builder.Services;
